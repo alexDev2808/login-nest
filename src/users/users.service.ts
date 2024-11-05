@@ -5,11 +5,17 @@ import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from './entities/user.entity';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
+import { JwtService } from '@nestjs/jwt';
+
+type Tokens = {
+  access_token: string,
+  refresh_token: string
+};
 
 @Injectable()
 export class UsersService {
 
-  constructor(@InjectModel(User.name) private userModel: Model<UserDocument> ) {}
+  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>, private jwtSvc: JwtService ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
     try {
@@ -48,12 +54,24 @@ export class UsersService {
         throw new HttpException('No existe', HttpStatus.UNAUTHORIZED);
       }
       if(user && isPasswordValid) {
-        const { email, name } = user;
-        return { email, name }
+        const payload = { sub: user._id, email: user.email, name: user.name }
+        return {
+          access_token: await this.jwtSvc.signAsync(payload, {
+            secret: 'jwt_secret',
+            expiresIn: '1d'
+          }),
+          refresh_token: await this.jwtSvc.signAsync(payload, {
+            secret: 'jwt_secret_refresh',
+            expiresIn: '7d'
+          }),
+          message: 'Login succesful'
+        }
       }
 
     } catch (error) {
       throw new HttpException('No existe', HttpStatus.UNAUTHORIZED);
     }
   }
+
+
 }
