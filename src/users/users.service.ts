@@ -39,4 +39,21 @@ export class UsersService {
   remove(id: number) {
     return `This action removes a #${id} user`;
   }
+
+  async loginUser(email: string, password: string) {
+    try {
+      const user = await this.userModel.findOne({email});
+      const isPasswordValid = await bcrypt.compare(password, user.password )
+      if(!isPasswordValid) {
+        throw new HttpException('No existe', HttpStatus.UNAUTHORIZED);
+      }
+      if(user && isPasswordValid) {
+        const { email, name } = user;
+        return { email, name }
+      }
+
+    } catch (error) {
+      throw new HttpException('No existe', HttpStatus.UNAUTHORIZED);
+    }
+  }
 }
